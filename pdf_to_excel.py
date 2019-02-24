@@ -19,7 +19,18 @@ def move_file(file_path, relative_destination_folder, new_file_name):
     working_directory = os.getcwd()
 
     file_name = os.path.basename(file_path)
-    destination_path = os.path.join(working_directory, relative_destination_folder, new_file_name)
+    destination_folder = os.path.join(working_directory, relative_destination_folder)
+
+
+    if os.path.exists(destination_folder) == False:
+
+        print("Alert - Following path was not found, creating new one -> {}".format(destination_folder))
+
+        os.makedirs(destination_folder)
+
+
+
+    destination_path = os.path.join(destination_folder, new_file_name)
 
     os.rename(file_path, destination_path)
 
@@ -28,6 +39,10 @@ def move_file(file_path, relative_destination_folder, new_file_name):
 
 
 def list_of_files(path,file_extension):
+
+    if os.path.exists(path) == False:
+
+        print("Error - path does not exist -> {}".format(path))
 
     matches = []
     for filename in os.listdir(path):
@@ -84,7 +99,7 @@ def parse_assesment_to_excel(assessment_path, database_path):
 
     if os.path.exists(database_path) == True:
 
-        print "Database file {} already exists, loading previous records".format(database_path)
+        print "Info - Database file {} already exists, loading previous records".format(database_path)
         exsiting_data = pandas.read_excel(database_path)
         print exsiting_data
         data_frame = exsiting_data.append(data_frame)
@@ -112,14 +127,13 @@ def parse_assesment_to_excel(assessment_path, database_path):
 
 
 
-
+# Settings
+database_path = "hindamiste_andmebaas.xlsx"
+incomig_files_path = "incoming"
 
 # PROCESS START
 
-
-database_path = "hindamiste_andmebaas.xlsx"
-
-incoming_assessmnets = list_of_files("incoming", "pdf")
+incoming_assessmnets = list_of_files(incomig_files_path, "pdf")
 
 if len(incoming_assessmnets) == 0:
     print "No assessments found - process stop"
