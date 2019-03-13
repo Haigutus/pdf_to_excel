@@ -6,6 +6,8 @@ import base64
 import uuid
 from flask import send_file
 
+import os
+
 import dash
 from dash.dependencies import Input, Output, State
 import dash_core_components as dcc
@@ -47,6 +49,14 @@ def parse_contents(contents, filename, date):
 
     file_save_name  = "incoming/{}.pdf".format(uuid.uuid4())
     date_string     = datetime.datetime.fromtimestamp(date).isoformat()
+
+    folder = os.path.dirname(file_save_name)
+
+    if os.path.exists(folder) == False:
+
+        print("Alert - Following path was not found, creating new one -> {}".format(folder))
+
+        os.makedirs(folder)
 
     with open(file_save_name, "wb") as downloaded_pdf:
         file_header, pdf_file = contents.split(",")
