@@ -32,6 +32,8 @@ def move_file(file_path, relative_destination_folder, new_file_name):
 
     destination_path = os.path.join(destination_folder, new_file_name)
 
+    print(file_path, destination_path)
+
     os.rename(file_path, destination_path)
 
     return destination_path
@@ -61,11 +63,11 @@ def list_of_files(path,file_extension):
 
 
 
-def parse_assesment_to_excel(assessment_path, database_path):
+def parse_assessment_to_excel(assessment_path, database_path):
 
     utc_now = datetime.utcnow()
 
-    data_dictionary = OrderedDict({"Processed_UTC":utc_now.isoformat()}) # Lets make an dictionary where to keep all the parsed values, lets add time when parsing was started
+    data_dictionary = OrderedDict({"Processed_UTC":utc_now.isoformat()}) # Lets make a dictionary where all the parsed values are kept, lets add time when parsing was started
 
 
     assessment_file = open(assessment_path, 'rb')
@@ -81,14 +83,20 @@ def parse_assesment_to_excel(assessment_path, database_path):
 
         if type(value) == str:
 
-            unicode_value = unicode(value.decode("iso-8859-1").replace(u"\xfe\xff\x00", u"").replace(u"\x00", u"")) # Lets convert the string to uncide and replace is needed to remove some funny characters
+            unicode_value = unicode(value.decode("iso-8859-1").replace(u"\xfe\xff\x00", u"").replace(u"\x00", u"").replace(u'\xfe\xff', u"")) # Lets convert the string to unicode and replace is needed to remove some funny characters
             data_dictionary[key] = [unicode_value]
 
         elif value == None:
-            data_dictionary[key] = [u"Ei"]
+            data_dictionary[key] = [u"ei"]
 
         else:
             data_dictionary[key] = [value.name]
+
+            if value.name == "Off":
+                data_dictionary[key] = [u"ei"]
+
+            if value.name == "Yes":
+                data_dictionary[key] = [u"jah"]
 
     assessment_file.close()
 
@@ -100,13 +108,13 @@ def parse_assesment_to_excel(assessment_path, database_path):
     if os.path.exists(database_path) == True:
 
         print "Info - Database file {} already exists, loading previous records".format(database_path)
-        exsiting_data = pandas.read_excel(database_path)
-        print exsiting_data
-        data_frame = exsiting_data.append(data_frame)
+        existing_data = pandas.read_excel(database_path)
+        print existing_data
+        data_frame = existing_data.append(data_frame, sort=False)
 
-        #Create bacup of current database
+        #Create backup of current database
 
-        move_file(database_path, "database_bacup", "{:%Y%m%d-%H%M%S}_{}".format(utc_now, database_path))
+        move_file(database_path, "database_backup", "{:%Y%m%d-%H%M%S}_{}".format(utc_now, uuid.uuid4()))
 
 
 
@@ -129,22 +137,22 @@ def parse_assesment_to_excel(assessment_path, database_path):
 
 # Settings
 database_path = "hindamiste_andmebaas.xlsx"
-incomig_files_path = "incoming"
+incoming_files_path = "incoming"
 
 # PROCESS START
 
-incoming_assessmnets = list_of_files(incomig_files_path, "pdf")
+incoming_assessments = list_of_files(incoming_files_path, "pdf")
 
-if len(incoming_assessmnets) == 0:
+if len(incoming_assessments) == 0:
     print "No assessments found - process stop"
 
 
-for assessment_path in incoming_assessmnets:
+for assessment_path in incoming_assessments:
 
     file_name = "{:%Y%m%d-%H%M%S}_{}.pdf".format(datetime.utcnow(), uuid.uuid4()) # Rename to unique filename
 
     assessment_path = move_file(assessment_path, "unknown", file_name)
 
-    data_dict = parse_assesment_to_excel(assessment_path, database_path)
+    data_dict = parse_assessment_to_excel(assessment_path, database_path)
 
     move_file(assessment_path, "processed", file_name)
