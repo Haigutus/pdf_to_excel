@@ -161,7 +161,7 @@ if len(incoming_assessments) == 0:
 
 for assessment_path in incoming_assessments:
 
-    print("Info  - processing {}".format(assessment_path))
+    print("\nInfo  - processing {}".format(assessment_path))
 
     # Rename to unique filename as we are keeping them on filesystem
     file_name = "{:%Y%m%d-%H%M%S}_{}.pdf".format(datetime.utcnow(), uuid.uuid4())
