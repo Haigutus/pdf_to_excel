@@ -136,17 +136,16 @@ def parse_assessment_to_excel(assessment_path, database_path):
 
     data_frame.reset_index(drop=True, inplace=True)
 
-    writer = pandas.ExcelWriter(database_path)
-    data_frame.to_excel(writer,'Hindamised')
+    writer = pandas.ExcelWriter(database_path, engine='xlsxwriter')
+    data_frame.to_excel(writer,'Hindamised', encoding='utf8')
     writer.save()
-
 
     return data_dictionary
 
 
 
 # SETTINGS
-database_path        = "hindamiste_andmebaas.xlsx"
+database_path        = "HindamisteAndmebaas.xlsx"
 incoming_files_path  = "incoming"
 processed_files_path = "processed"
 unknown_files_path   = "unknown"
@@ -176,7 +175,8 @@ for assessment_path in incoming_assessments:
     except Exception as error:
 
             print("Error - processing failed")
-            print error
+            print(error.__class__.__name__)
+            print(error)
             continue
 
     # Move file to processed status
