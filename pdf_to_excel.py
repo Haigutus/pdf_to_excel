@@ -137,7 +137,7 @@ def parse_assessment_to_excel(assessment_path, database_path):
     data_frame.reset_index(drop=True, inplace=True)
 
     writer = pandas.ExcelWriter(database_path, engine='xlsxwriter')
-    data_frame.to_excel(writer,'Hindamised', encoding='utf8')
+    data_frame[allowed_columns].to_excel(writer,'Hindamised', encoding='utf8')
     writer.save()
 
     return data_dictionary
