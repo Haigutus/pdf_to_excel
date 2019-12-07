@@ -74,6 +74,7 @@ def parse_assessment_to_excel(assessment_path, database_path):
     utc_now = datetime.utcnow()
 
     data_dictionary = OrderedDict({"Processed_UTC":utc_now.isoformat()}) # Lets make a dictionary where all the parsed values are kept, lets add time when parsing was started
+    # TODO add also processed file name
 
 
     assessment_file = open(assessment_path, 'rb')
@@ -107,12 +108,8 @@ def parse_assessment_to_excel(assessment_path, database_path):
 
     assessment_file.close()
 
-
+    # Create pandas dataframe for exporting data
     data_frame = pandas.DataFrame(data_dictionary)
-
-    # It seems some PDF editors add hidden fields after filling out, lets limit to allowed fields
-    allowed_columns = ['Processed_UTC', 'Elukoht', 'Nr', 'Teostaja', 'Teost_kuup', 'Amet', 'Tootukassas', 'Psyhholoog', 'Psyhhiaater_raviarst', 'Ode_sots', 'Elamisting', 'Oma', 'Yyritud', 'Kellegi_pool', 'Sots_pind', 'Varjupaigas', 'Turvakodus', 'Abivajadus', 'Maj_toimetulek', 'Maj_likert', 'Volad_kohust', 'Elab_elukaaslasega', 'Suhted_elukaaslane', 'Elukaasl_vanus', 'Elukaasl_sugu', 'Kooselu', 'Elab_lastega', 'Suhted_lapsed', 'Laste_arv', 'Lapsed_info', 'Elab_emaga', 'Suhted_ema', 'vanem1_vanus', 'Elab_sugulastega', 'Suhted_sugulased', 'Sugulased_info', 'Elab_sopradega', 'Suhted_sobrad', 'Sobrad_info', 'Elab_tuttavatega', 'Suhted_muud', 'Muud_info', 'Var_haigused', 'Ravimid', 'Ravimi_info', 'Psyhaired', 'Psyhaired_info', 'Var_alkoravi', 'Alkoravi_info', 'Meeleolu', 'DEP', 'UAR', 'PAF', 'SAR', 'AST', 'INS', 'AUDIT', 'CIWA', 'MoCa', 'Tarb_planeeritud', 'Tarb_impuls_reakt', 'Tarb_pidev', 'Tyypkogused', 'Tyypyhikud', 'Tsyklid', 'Tsyklid_info', 'Okserefleks', 'Funktsioon', 'Pos_mojurid', 'Eesmark', 'Kuritarv_raskus', 'Ravi_mot', 'Psyhhosots_sekk', 'Psyhhosots_tyyp', 'Psyhhiaatr_ravi', 'vanem1_sugu', 'Tookoht', 'Suunaja', 'Haridus', 'Nimi', 'Joomapaevad', 'SMS', 'Perearst', 'Synniaasta', 'Koned', 'Kindlustus', 'Sugu', 'Elab_isaga', 'Suhted_isa', 'vanem1_vanus_2', 'vanem1_sugu_2', 'Peaparandus', 'Tung', 'Kained_paevad', 'Jooma_aeg', 'Kaine_aeg', 'F1', 'F2', 'F3', 'F4', 'GHQ', 'Haigused_info', 'Tung_info', 'Lahedastega', 'Juhututtavatega', 'Tooandjast_soltuv', 'Tervisekaebused', 'Tervis_info', 'Mot_info', 'Lab_kuup', 'GGT', 'ALAT', 'ASAT', 'CDT']
-    data_frame = data_frame[allowed_columns]
 
     if debug:
         print list(data_frame.columns) # DEBUG
@@ -121,65 +118,66 @@ def parse_assessment_to_excel(assessment_path, database_path):
     if os.path.exists(database_path) == True:
 
         print "Info  - Database file {} already exists, loading previous records".format(database_path)
-        existing_data = pandas.read_excel(database_path)
+        existing_data = pandas.read_excel(database_path, index_col=0) # TODO set first column as index
 
         if debug:
             print existing_data
 
+        # Add to exsiting data
         data_frame = existing_data.append(data_frame, sort=False)
 
+        # Fix index numbering
+        data_frame = data_frame.reset_index(drop=True) # Fix index numbering
+
         # Create backup of current database
-        move_file(database_path, "database_backup", "{:%Y%m%d-%H}_{}".format(utc_now, uuid.uuid4())) # %Y%m%d-%H%M%S to keep every version, right now all bacups on same hour will be written over.
+        move_file(database_path, "database_backup", "{:%Y%m%dT%H%M%S}_{}".format(utc_now, uuid.uuid4())) # Create unique filename for each bacup
 
 
-
-
-    data_frame.reset_index(drop=True, inplace=True)
-
+    # TODO - add nicer formatting to excel
     writer = pandas.ExcelWriter(database_path, engine='xlsxwriter')
-    data_frame[allowed_columns].to_excel(writer,'Hindamised', encoding='utf8')
+    data_frame.to_excel(writer,'Hindamised', encoding='utf8')
     writer.save()
 
     return data_dictionary
 
+# Run only when the script itself is ran, if script is imported by another script then this part will not run
+if __name__ == '__main__':
+    # SETTINGS
+    database_path        = "HindamisteAndmebaas.xlsx"
+    incoming_files_path  = "incoming"
+    processed_files_path = "processed"
+    unknown_files_path   = "unknown"
+
+    # PROCESS START
+
+    incoming_assessments = list_of_files(incoming_files_path, "pdf")
+
+    if len(incoming_assessments) == 0:
+        print "No assessments found - process stop"
 
 
-# SETTINGS
-database_path        = "HindamisteAndmebaas.xlsx"
-incoming_files_path  = "incoming"
-processed_files_path = "processed"
-unknown_files_path   = "unknown"
+    for assessment_path in incoming_assessments:
 
-# PROCESS START
+        print("\nInfo  - processing {}".format(assessment_path))
 
-incoming_assessments = list_of_files(incoming_files_path, "pdf")
+        # Rename to unique filename as we are keeping them on filesystem
+        file_name = "{:%Y%m%d-%H%M%S}_{}.pdf".format(datetime.utcnow(), uuid.uuid4())
 
-if len(incoming_assessments) == 0:
-    print "No assessments found - process stop"
+        # Move file to unknown status, if it is erronous it will stay there but wont stop processing of new incoming files
+        assessment_path = move_file(assessment_path, unknown_files_path, file_name)
 
+        try:
+            # Parse file
+            data_dict = parse_assessment_to_excel(assessment_path, database_path)
 
-for assessment_path in incoming_assessments:
+        except Exception as error:
 
-    print("\nInfo  - processing {}".format(assessment_path))
+                print("Error - processing failed")
+                print(error.__class__.__name__)
+                print(error)
+                continue
 
-    # Rename to unique filename as we are keeping them on filesystem
-    file_name = "{:%Y%m%d-%H%M%S}_{}.pdf".format(datetime.utcnow(), uuid.uuid4())
+        # Move file to processed status
+        move_file(assessment_path, processed_files_path, file_name)
 
-    # Move file to unknown status, if it is erronous it will stay there but wont stop processing of new incoming files
-    assessment_path = move_file(assessment_path, unknown_files_path, file_name)
-
-    try:
-        # Parse file
-        data_dict = parse_assessment_to_excel(assessment_path, database_path)
-
-    except Exception as error:
-
-            print("Error - processing failed")
-            print(error.__class__.__name__)
-            print(error)
-            continue
-
-    # Move file to processed status
-    move_file(assessment_path, processed_files_path, file_name)
-
-    print("Info  - processing done")
+        print("Info  - processing done")
