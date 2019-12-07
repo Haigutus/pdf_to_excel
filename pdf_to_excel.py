@@ -133,9 +133,31 @@ def parse_assessment_to_excel(assessment_path, database_path):
         move_file(database_path, "database_backup", "{:%Y%m%dT%H%M%S}_{}".format(utc_now, uuid.uuid4())) # Create unique filename for each bacup
 
 
-    # TODO - add nicer formatting to excel
+    # Export to excel and add formatting
+
+    sheet_name = "Hindamised"
+
     writer = pandas.ExcelWriter(database_path, engine='xlsxwriter')
-    data_frame.to_excel(writer,'Hindamised', encoding='utf8')
+    data_frame.to_excel(writer, sheet_name, encoding='utf8')
+
+    # Get sheet to do some formatting
+    sheet = writer.sheets[sheet_name]
+
+    # Set default column size, if this does not work you are missing XslxWriter module
+    first_col = 1
+    last_col  = len(data_frame.columns)
+    width     = 25
+    sheet.set_column(first_col, last_col, width)
+
+    # freeze column names and ID column
+    sheet.freeze_panes(1, 1)
+
+    # Apply filter to excel
+    first_row = 0
+    last_row = len(data_frame)
+    sheet.autofilter(first_row, first_col, last_row, last_col)
+
+    # Save the file
     writer.save()
 
     return data_dictionary
